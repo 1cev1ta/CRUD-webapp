@@ -2,10 +2,12 @@ package com.bsdev.crud_webapp.service;
 
 import com.bsdev.crud_webapp.dto.TaskRequest;
 import com.bsdev.crud_webapp.dto.TaskResponse;
+import com.bsdev.crud_webapp.dto.TaskStatusChangedDto;
 import com.bsdev.crud_webapp.entity.Task;
 import com.bsdev.crud_webapp.exception.TaskNotFoundException;
 import com.bsdev.crud_webapp.repository.TaskRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +18,7 @@ import java.util.List;
 public class TaskService {
 
     private final TaskRepository taskRepository;
+    private final KafkaTemplate<String, TaskStatusChangedDto> kafkaTemplate;
 
     @Transactional
     public TaskResponse createTask(TaskRequest taskRequest) {
@@ -23,6 +26,7 @@ public class TaskService {
                 .title(taskRequest.title())
                 .description(taskRequest.description())
                 .userId(taskRequest.userId())
+                .status(taskRequest.status())
                 .build();
         Task result = taskRepository.save(task);
         return toResponse(result);
@@ -41,10 +45,17 @@ public class TaskService {
     @Transactional
     public void updateTask(Long id, TaskRequest taskRequest) {
         Task task = getTaskByIdOrThrow(id);
+        boolean statusChanged = task.getStatus() != taskRequest.status();
         task.setTitle(taskRequest.title());
         task.setDescription(taskRequest.description());
         task.setUserId(taskRequest.userId());
+        task.setStatus(taskRequest.status());
         taskRepository.save(task);
+
+        if (statusChanged) {
+            kafkaTemplate.sendDefault(new TaskStatusChangedDto(id, taskRequest.status()));
+            kafkaTemplate.flush();
+        }
     }
 
     @Transactional
@@ -64,6 +75,7 @@ public class TaskService {
         return new TaskResponse(task.getId(),
                 task.getTitle(),
                 task.getDescription(),
-                task.getUserId());
+                task.getUserId(),
+                task.getStatus());
     }
 }

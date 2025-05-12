@@ -1,8 +1,11 @@
 package com.bsdev.crud_webapp.dto;
 
+import com.bsdev.crud_webapp.entity.TaskStatus;
+
 public record TaskResponse(
         long id,
         String title,
         String description,
-        long userId
+        long userId,
+        TaskStatus status
 ) { }
