@@ -1,10 +1,59 @@
-spring.application.name=crud_webapp
+spring:
+  application:
+    name: crud_webapp
 
-spring.datasource.url=jdbc:postgresql://localhost:5432/tasksdb
-spring.datasource.username=postgres
-spring.datasource.password=postgres
-spring.datasource.driver-class-name=org.postgresql.Driver
+  datasource:
+    url: jdbc:postgresql://localhost:5432/tasksdb
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
 
-spring.jpa.hibernate.ddl-auto=update
-spring.jpa.generate-ddl=true
-spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+  jpa:
+    hibernate:
+      ddl-auto: update
+    generate-ddl: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: task-status-group
+      enable-auto-commit: false
+      auto-offset-reset: earliest
+      max-poll-records: 10
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    listener:
+      topic:
+        task-status-changed: tasks_status_changed
+      ack-mode: manual_immediate
+      concurrency: 1
+
+  mail:
+    host: smtp.bk.ru
+    port: 465
+    username: "bs_dev@bk.ru"
+    password: "qifbuPPhvhzvi7sDBC0e"
+    protocol: smtp
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: true
+          starttls:
+            enable: true
+notification:
+  from: bs_dev@bk.ru
+  to: spirin323@gmail.com
+
+server:
+  port: 8081
+
+logging:
+  level:
+    root: INFO
+    com.bsdev.crud_webapp: DEBUG
