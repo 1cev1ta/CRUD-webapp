@@ -36,7 +36,7 @@ spring:
     host: smtp.bk.ru
     port: 465
     username: "bs_dev@bk.ru"
-    password: "some_password"
+    password: "bi85XefEFm5enNmbKL7s"
     protocol: smtp
     properties:
       mail:
@@ -56,4 +56,7 @@ server:
 logging:
   level:
     root: INFO
-    com.bsdev.crud_webapp: DEBUG
+    org.spring.bsdev.starter.log_starter: DEBUG
+  starter:
+    enabled: true      # true/false
+    level: DEBUG       # TRACE, DEBUG, INFO, WARN, ERROR
