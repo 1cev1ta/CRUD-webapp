@@ -22,8 +22,8 @@ public class NotificationService {
         SimpleMailMessage msg = new SimpleMailMessage();
         msg.setFrom(from);
         msg.setTo(defaultRecipient);
-        msg.setSubject("Task " + taskId + " status changed");
-        msg.setText("Task with ID " + taskId + " has new status: " + status);
+        msg.setSubject("Задача с ID: " + taskId + " изменила свой статус");
+        msg.setText("Задача с ID " + taskId + " теперь имеет новый статус: " + status);
         mailSender.send(msg);
     }
 }
