@@ -14,7 +14,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
 
   zookeeper_hw:
-    image: confluentinc/cp-zookeeper:5.5.0
+    image: confluentinc/cp-zookeeper:6.2.1
     hostname: zookeeper_hw
     container_name: zookeeper_hw
     ports:
@@ -24,7 +24,7 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
 
   broker_hw:
-    image: confluentinc/cp-kafka:5.5.0
+    image: confluentinc/cp-kafka:6.2.1
     hostname: broker_hw
     container_name: broker_hw
     depends_on:
