@@ -1,7 +1,7 @@
 package com.bsdev.crud_webapp.entity;
 
-import jakarta.persistence.*;
 import lombok.*;
+import javax.persistence.*;
 
 @Entity
 @Table(name = "tasks")
