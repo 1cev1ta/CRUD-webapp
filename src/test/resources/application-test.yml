@@ -25,7 +25,7 @@ spring:
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
     listener:
       topic:
-        task-status-changed: task-status-changed
+        task-status-changed: tasks_status_changed
       ack-mode: manual_immediate
       concurrency: 1
 

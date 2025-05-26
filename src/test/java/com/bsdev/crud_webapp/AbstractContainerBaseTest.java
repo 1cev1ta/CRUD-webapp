@@ -27,6 +27,6 @@ public abstract class AbstractContainerBaseTest {
         registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
 
         registry.add("spring.kafka.bootstrap-servers", kafka::getBootstrapServers);
-        registry.add("spring.kafka.listener.topic.task-status-changed", () -> "tasks-status-changed");
+        registry.add("spring.kafka.listener.topic.task-status-changed", () -> "tasks_status_changed");
     }
 }

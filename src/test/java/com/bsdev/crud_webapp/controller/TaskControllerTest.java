@@ -5,20 +5,25 @@ import com.bsdev.crud_webapp.dto.TaskStatusChangedDto;
 import com.bsdev.crud_webapp.entity.Task;
 import com.bsdev.crud_webapp.entity.TaskStatus;
 import com.bsdev.crud_webapp.repository.TaskRepository;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
-import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.Duration;
+import java.util.List;
+import java.util.UUID;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -33,15 +38,31 @@ public class TaskControllerTest extends AbstractContainerBaseTest {
     @Autowired
     private TaskRepository repository;
 
-    @MockBean
-    private KafkaTemplate<String, TaskStatusChangedDto> kafkaTemplate;
+    @Autowired
+    private ConsumerFactory<String, TaskStatusChangedDto> consumerFactory;
 
-    private long existingId;
+    private Consumer<String, TaskStatusChangedDto> kafkaConsumer;
 
     @BeforeEach
     void setUp() {
         repository.deleteAll();
-        var saved = repository.save(
+
+        kafkaConsumer = consumerFactory.createConsumer(
+                "ctrl-test-group-" + UUID.randomUUID(),
+                "ctrl-test-client-" + UUID.randomUUID()
+        );
+
+        kafkaConsumer.subscribe(List.of("tasks_status_changed"));
+        kafkaConsumer.poll(Duration.ofMillis(0));
+    }
+
+    @AfterEach
+    void tearDown() {
+        kafkaConsumer.close();
+    }
+
+    private long createTestTask() {
+        return repository.save(
                 Task.builder()
                         .id(123)
                         .title("Init")
@@ -49,8 +70,7 @@ public class TaskControllerTest extends AbstractContainerBaseTest {
                         .userId(1L)
                         .status(TaskStatus.NEW)
                         .build()
-        );
-        existingId = saved.getId();
+        ).getId();
     }
 
     @Test
@@ -75,9 +95,10 @@ public class TaskControllerTest extends AbstractContainerBaseTest {
     @Test
     @DisplayName("покрывает успешный сценарий вызова метода GET /tasks/{id} для получения задачи по ID")
     void getTaskFoundSuccess() throws Exception {
-        mockMvc.perform(get("/tasks/{id}", existingId))
+        long savedId = createTestTask();
+        mockMvc.perform(get("/tasks/{id}", savedId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(existingId));
+                .andExpect(jsonPath("$.id").value(savedId));
     }
 
     @Test
@@ -89,7 +110,9 @@ public class TaskControllerTest extends AbstractContainerBaseTest {
 
     @Test
     @DisplayName("покрывает сценарий вызова метода PUT /tasks/{id} для обновления задачи и публикации события в Kafka")
-    void updateTask_changesStatus_andPublishesKafka() throws Exception {
+    void updateTaskChangesStatusAndPublishKafka() throws Exception {
+        long savedId = createTestTask();
+
         String json = """
             {
               "title": "Задача №1",
@@ -99,29 +122,33 @@ public class TaskControllerTest extends AbstractContainerBaseTest {
             }
             """;
 
-        mockMvc.perform(put("/tasks/{id}", existingId)
+        mockMvc.perform(put("/tasks/{id}", savedId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andExpect(status().isNoContent())
                 .andExpect(content().string(""));
 
-        Task updated = repository.findById(existingId)
+        var record = KafkaTestUtils.getSingleRecord(kafkaConsumer, "tasks_status_changed");
+        var dto = record.value();
+        assertEquals(savedId, dto.taskId());
+        assertEquals(TaskStatus.DONE, dto.status());
+
+        Task updated = repository.findById(savedId)
                 .orElseThrow(() -> new AssertionError("Task not found after update"));
         assertEquals("Задача №1",   updated.getTitle(),       "Title должен сохраниться из запроса");
         assertEquals("Погулять с собакой",   updated.getDescription(), "Description должен сохраниться из запроса");
         assertEquals(2542L,    updated.getUserId(),      "UserId должен сохраниться из запроса");
         assertEquals(TaskStatus.DONE, updated.getStatus(), "Status должен обновиться на DONE");
-
-        verify(kafkaTemplate).sendDefault(
-                new TaskStatusChangedDto(existingId, TaskStatus.DONE)
-        );
     }
 
     @Test
     @DisplayName("покрывает позитивный сценарий вызова метода DELETE /tasks/{id} для удаления задачи")
     void deleteTaskEndpoint() throws Exception {
-        mockMvc.perform(delete("/tasks/{id}", existingId))
+        long savedId = createTestTask();
+        mockMvc.perform(delete("/tasks/{id}", savedId))
                 .andExpect(status().isNoContent());
+        mockMvc.perform(get("/tasks/{id}", savedId))
+                .andExpect(status().isNotFound());
     }
 
     @Test
