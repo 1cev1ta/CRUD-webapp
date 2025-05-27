@@ -332,4 +332,4 @@ docker-compose up --build
 
 ✍🏻 telegram (contact me): https://t.me/spi_rin
 
-👋 linkedin (follow me): https://www.linkedin.com/in/boris-spirin-74ab55280/
+👋 linkedin (follow me): https://www.linkedin.com/in/boris-spirin/
